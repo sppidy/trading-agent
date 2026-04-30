@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# NOTE: submodules are private repos. The default GITHUB_TOKEN cannot fetch them.
+# Set SUBMODULE_PAT in repo secrets — a fine-grained PAT with read access to all
+# trading-agent submodule repos (nse-agent, nse-backend, aitrader-android, etc.)
+# and the line `token: ${{ secrets.SUBMODULE_PAT }}` will pull them in CI.
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nse-backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install backend deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run backend tests
+        run: python -m unittest discover -s tests -v
+
+  android-unit-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-java@v4
+        id: setup-java
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+      - name: Run Android unit tests
+        env:
+          JAVA_HOME: ${{ steps.setup-java.outputs.path }}
+          ORG_GRADLE_JAVA_HOME: ${{ steps.setup-java.outputs.path }}
+        run: ./gradlew testDebugUnitTest --no-daemon
