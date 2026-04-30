@@ -11,9 +11,8 @@ on:
       - '.github/workflows/android-build.yml'
   workflow_dispatch:
 
-# NOTE: requires SUBMODULE_PAT secret to pull the private android submodule.
-# Signing secrets (RELEASE_KEYSTORE_BASE64, RELEASE_STORE_PASSWORD,
-# RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD) are migrated from ai-trading-agent-utils.
+# Signing secrets used: RELEASE_KEYSTORE_BASE64, RELEASE_STORE_PASSWORD,
+# RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD.
 
 jobs:
   build-apk:
@@ -25,7 +24,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.SUBMODULE_PAT || secrets.GITHUB_TOKEN }}
       - uses: actions/setup-java@v4
         id: setup-java
         with:

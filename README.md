@@ -98,8 +98,6 @@ Workflows live in [`.github/workflows/`](.github/workflows):
 | `android-build.yml` | Debug + signed release APK from `android/` (uses `RELEASE_*` GH secrets) |
 | `desktop-build.yml` | msbuild Release x64 of the WinUI solution under `windows/` |
 
-Super-level CI requires a `SUBMODULE_PAT` secret (fine-grained PAT with read access to all 7 submodule repos) so it can fetch private submodules. The default `GITHUB_TOKEN` cannot fetch other repos. Once the project is fully public, this requirement goes away.
-
 ## Contributing
 
 PRs welcome. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first — short version: open an issue first for non-trivial changes, target the relevant submodule, sign your commits, and don't add `Co-Authored-By` AI trailers.

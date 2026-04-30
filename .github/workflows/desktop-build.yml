@@ -11,8 +11,6 @@ on:
       - '.github/workflows/desktop-build.yml'
   workflow_dispatch:
 
-# NOTE: requires SUBMODULE_PAT to pull the private windows submodule.
-
 jobs:
   build:
     runs-on: windows-latest
@@ -23,7 +21,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.SUBMODULE_PAT || secrets.GITHUB_TOKEN }}
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:

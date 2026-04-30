@@ -40,7 +40,7 @@ Workflows live in [`.github/workflows/`](.github/workflows) at the super-repo le
 - `android-build.yml` — debug + signed release APK from `android/` (uses `RELEASE_KEYSTORE_BASE64`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD` GH secrets).
 - `desktop-build.yml` — msbuild Release x64 build of the WinUI solution under `windows/` (Windows runner).
 
-Super-level CI requires `SUBMODULE_PAT` (fine-grained PAT with read on all 7 submodule repos) so it can fetch private submodules; default `GITHUB_TOKEN` cannot.
+All submodule repos are public, so super-level CI fetches them with the default `GITHUB_TOKEN` — no extra PAT needed.
 
 ## Cross-cutting docs
 
