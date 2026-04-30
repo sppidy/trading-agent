@@ -1,31 +1,62 @@
 # AGENTS.md
 
-Orientation for AI agents working in this ecosystem. This file documents the full multi-repo system so an agent landing in any one of these directories can understand the whole.
+Orientation for AI agents working in this ecosystem. This file documents the full system so an agent landing in any submodule can understand the whole.
 
-## The codebases
+## Layout
 
-Code is organised across **two Windows top-level projects** (`B:\projects\ai-trading-agent` and `B:\projects\ai-agent-trading-app`) plus the Forex project. Several sub-folders of `ai-agent-trading-app` are deployed independently.
+`trading-agent/` is a meta-repo. Each subfolder is a git submodule pointing to its own private repo. There is no other top-level project — everything lives here.
 
-| # | Module | Path | Role | Git | Deploy |
-|---|--------|------|------|-----|--------|
-| 1 | NSE agent | `B:\projects\ai-trading-agent` | Python trading agent for Indian equities | ✅ `sppidy/ai-trading-agent` | `git pull` on server |
-| 2 | NSE backend | `B:\projects\ai-agent-trading-app\backend` | FastAPI wrapper around NSE agent | ✅ `sppidy/ai-trading-agent-utils` | `scp` to `~/backend/` |
-| 3 | Web dashboard | `B:\projects\ai-agent-trading-app\frontend` | Vanilla JS SPA served by the backend | ✅ (same repo) | `scp` to `~/frontend/` |
-| 4 | Desktop app | `B:\projects\ai-agent-trading-app\desktop-app` | Native WinUI 3 (.NET 8) client | ✅ (same repo) | local build |
-| 5 | Android app | `B:\projects\ai-agent-trading-app\android-app` | Kotlin / Jetpack Compose mobile client | ✅ (same repo) | APK build, side-load |
-| 6 | Forex agent | `B:\projects\forex-trading-agent\agent` | Python trading agent for FX/commodities | ❌ | `scp` (whole dir) |
-| 7 | Forex backend | `B:\projects\forex-trading-agent\backend` | FastAPI multi-user wrapper around forex agent | ❌ | `scp` (whole dir) |
+| # | Module | Path | Repo | Stack | Deploy |
+|---|--------|------|------|-------|--------|
+| 1 | NSE agent      | `nse-agent/`      | [`sppidy/nse-agent`](https://github.com/sppidy/nse-agent)             | Python, CatBoost, ML | `git pull` on server |
+| 2 | NSE backend    | `nse-backend/`    | [`sppidy/nse-backend`](https://github.com/sppidy/nse-backend)         | FastAPI, uvicorn      | `scp` to `~/backend/` |
+| 3 | Web dashboard  | `web/`            | [`sppidy/aitrader-web`](https://github.com/sppidy/aitrader-web)       | Vanilla JS, no build  | `scp` to `~/frontend/` (served by NSE backend) |
+| 4 | Desktop app    | `windows/`        | [`sppidy/aitrader-desktop`](https://github.com/sppidy/aitrader-desktop) | WinUI 3 / .NET 8     | local build |
+| 5 | Android app    | `android/`        | [`sppidy/aitrader-android`](https://github.com/sppidy/aitrader-android) | Kotlin / Jetpack Compose | APK build (CI-signed), side-load |
+| 6 | Forex agent    | `forex-agent/`    | [`sppidy/forex-agent`](https://github.com/sppidy/forex-agent)         | Python                | `scp` (whole dir) |
+| 7 | Forex backend  | `forex-backend/`  | [`sppidy/forex-backend`](https://github.com/sppidy/forex-backend)     | FastAPI + PostgreSQL + Docker | `scp` (whole dir) |
 
 Server: `ubuntu@${BACKEND_HOST}`. All NSE-side services are private-network-only.
 
+## Cloning
+
+```bash
+git clone --recurse-submodules git@github.com:sppidy/trading-agent.git
+# or, after a plain clone:
+git submodule update --init --recursive
+```
+
+To pull every submodule to its `main`:
+
+```bash
+git submodule foreach 'git checkout main && git pull --ff-only'
+```
+
+## CI / build
+
+Workflows live in [`.github/workflows/`](.github/workflows) at the super-repo level **and** in each submodule:
+
+- `ci.yml` — pytest for `nse-agent` + `nse-backend`, smoke-compile for forex agent/backend, gradle unit tests for `android/`, asset-presence check for `web/`.
+- `android-build.yml` — debug + signed release APK from `android/` (uses `RELEASE_KEYSTORE_BASE64`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD` GH secrets).
+- `desktop-build.yml` — msbuild Release x64 build of the WinUI solution under `windows/` (Windows runner).
+
+Super-level CI requires `SUBMODULE_PAT` (fine-grained PAT with read on all 7 submodule repos) so it can fetch private submodules; default `GITHUB_TOKEN` cannot.
+
+## Cross-cutting docs
+
+Located under [`docs/`](docs):
+- `GROWW_SDK.md` — Groww REST + MCP reference, rate limits.
+- `HDFC_SKY_API.md` — HDFC Sky API notes.
+- `DEPLOY_SECURITY_NOTES.md` — server hardening checklist (auth token, TLS, sudoers).
+
 ## Deployment rules — read before deploying
 
-- **NSE agent:** `git pull` only. Never `scp` the full repo. It clobbers live state files (`portfolio.json`, `*.db`, `trade_journal.json`) on the server. A past incident wiped live portfolio data this way.
-- **NSE backend:** `scp` specific files into `~/backend/` (preserve server-only files like `certs/` and `.backup`). Runs under **systemd** as `ai-trader-api.service` and `ai-trading-agent.service`. Restart with `sudo systemctl restart ai-trader-api.service ai-trading-agent.service`.
-- **Web dashboard:** `scp` the three files (`index.html`, `styles.css`, `app.js`) + the vendored `lightweight-charts.js` into `~/frontend/`. The backend serves them statically from `/dashboard`; no service restart needed for HTML/CSS/JS updates.
-- **Desktop app:** built locally via `dotnet build -p:Platform=arm64 -c Debug` — no server deploy. Runs from `desktop-app/NEON.Trader.Desktop/bin/arm64/Debug/net8.0-windows10.0.19041.0/NEON.Trader.exe`. Uses Windows App SDK 2.0-preview2 + LiveCharts2 + JetBrains Mono bundled font.
-- **Android app:** `./gradlew assembleRelease` with keystore creds from `.secrets/keystore.env` produces `app-release.apk` (signed, v2 scheme). Copy to repo root as `AITrader-release.apk` and side-load with `adb install -r`.
-- **Forex agent + backend:** `scp` both directories. No git repos locally. Runs under **Docker** (not systemd) — restart with `docker compose restart` or equivalent. Safe to scp because forex state lives in PostgreSQL, not files.
+- **NSE agent (`nse-agent/`):** `git pull` only. Never `scp` the full repo — it clobbers live state files (`portfolio.json`, `*.db`, `trade_journal.json`) on the server. A past incident wiped live portfolio data this way.
+- **NSE backend (`nse-backend/`):** `scp` specific files into `~/backend/` (preserve server-only files like `certs/` and `.backup`). Runs under **systemd** as `ai-trader-api.service` and `ai-trading-agent.service`. Restart with `sudo systemctl restart ai-trader-api.service ai-trading-agent.service`.
+- **Web dashboard (`web/`):** `scp` the four files (`index.html`, `styles.css`, `app.js`, `lightweight-charts.js`) into `~/frontend/`. The backend serves them statically from `/dashboard`; no service restart needed for HTML/CSS/JS updates.
+- **Desktop app (`windows/`):** built locally via `dotnet build -p:Platform=arm64 -c Debug` (or via the `desktop-build.yml` workflow for x64 Release). Runs from `windows/NEON.Trader.Desktop/bin/<arch>/<config>/net8.0-windows10.0.19041.0/NEON.Trader.exe`. Uses Windows App SDK 2.0-preview2 + LiveCharts2 + bundled JetBrains Mono.
+- **Android app (`android/`):** `./gradlew assembleRelease` with keystore creds produces a v2-signed APK. CI handles this on push via `android-build.yml`. Locally, keystore + passwords come from a `.secrets/` directory you keep outside the repo.
+- **Forex agent + backend (`forex-agent/`, `forex-backend/`):** `scp` both directories. Runs under **Docker** (not systemd) — restart with `docker compose restart` or equivalent. Safe to scp because forex state lives in PostgreSQL, not files.
 
 ## How they fit together
 
@@ -40,7 +71,7 @@ Android app  ──┼────►│      └── dynamically imports NSE 
 
 **All three clients (web, desktop, Android) share the same HTTP + WebSocket contract.** Each stores a configurable base URL + API key per "profile", so one client can flip between NSE main, NSE eval, and Forex backends without reinstall.
 
-## NSE agent (repo #1)
+## NSE agent — `nse-agent/`
 
 **Stack:** Python, CatBoost, scikit-learn, Gemini API, yfinance, feedparser.
 
@@ -64,23 +95,23 @@ Android app  ──┼────►│      └── dynamically imports NSE 
 
 **State files (DO NOT overwrite via scp):** `portfolio.json`, `trade_journal.json`, `*.db`.
 
-## NSE backend (repo #2)
+## NSE backend — `nse-backend/`
 
 **Stack:** FastAPI, uvicorn, in-memory job store (TTL 600s, max 200 jobs).
 
-**Entry point:** `api_server.py` (port 8000).
+**Entry point:** `api_server.py` (port 8000 / 8443 TLS).
 
-**How it loads the agent:** Dynamically imports NSE agent from `../ai-trading-agent/` or the `AGENT_DIR` env var. So **changes to NSE agent require the backend service to be restarted**.
+**How it loads the agent:** Dynamically imports NSE agent from `../nse-agent/` or the `AGENT_DIR` env var. So **changes to NSE agent require the backend service to be restarted**.
 
 **Key behaviors:**
 - Auth via `X-API-Key` header (value from `API_AUTH_TOKEN`).
-- CORS-configurable.
+- CORS-configurable via `TRUSTED_ORIGINS`.
 - Per-endpoint rate limiting (distinct buckets: `scan:start`, `scan:status`, `trade`, `chat:start`, `chat:status`).
 - Thread-safe portfolio mutex (`_PORTFOLIO_LOCK`) — serialises `/api/trade`, `/api/ai-signals/apply`, and `/api/order` against each other and against the autopilot.
 - **LogBroadcaster** does double duty: it hooks the in-process Python `logger` **and** tails `logs/trading_agent.log` on disk, so the separate `ai-trading-agent.service` (autopilot) process — which only writes to the file — also streams through the WebSocket. Starts from EOF so new clients don't get a history dump.
 - `TIMEFRAME_TO_YF` lookup is case-insensitive: `5m`, `15m`, `1h`, `1d`, `1w`, `1mo`, `1y` all resolve.
 - Autopilot control wraps the systemd `ai-trading-agent.service`.
-- Static-files mount at `/dashboard` serves the web frontend (`../frontend/`).
+- Static-files mount at `/dashboard` serves the web frontend (`../web/`).
 
 **Endpoints (all prefixed `/api/`):**
 - Read: `status`, `prices`, `candles`, `market-regime`, `watchlist`, `journal`, `lessons`, `logs/dates`, `logs/recent`, `training-log`.
@@ -90,7 +121,7 @@ Android app  ──┼────►│      └── dynamically imports NSE 
 - Chat: `chat`, `chat/status/{job_id}`.
 - Plus WebSocket: **`/ws/logs`** (token via `X-API-Key` header or `?token=` query).
 
-## Forex agent (repo #3)
+## Forex agent — `forex-agent/`
 
 **Stack:** Python, shares base infrastructure with NSE agent (`data_fetcher`, `backtester`, `paper_trader`, `learner`).
 
@@ -106,7 +137,7 @@ Android app  ──┼────►│      └── dynamically imports NSE 
 - Data interval: 15-minute candles (NSE uses daily)
 - Watchlist: FX majors (EURUSD, GBPUSD, USDJPY, AUDUSD, …) + gold/silver (GC=F, SI=F), USD Index (DX-Y.NYB) for regime.
 
-## Forex backend (repo #4)
+## Forex backend — `forex-backend/`
 
 **Stack:** FastAPI + **PostgreSQL** + Docker. Multi-user.
 
@@ -118,7 +149,7 @@ Android app  ──┼────►│      └── dynamically imports NSE 
 
 **Extra endpoints vs NSE backend:** `/api/admin/users`, `/api/strategies`, `/api/market-regime`, `/api/candles`.
 
-## Web dashboard (module #3)
+## Web dashboard — `web/`
 
 **Stack:** vanilla JS (no build), HTML + CSS, TradingView `lightweight-charts` vendored locally, JetBrains Mono from Google Fonts.
 
@@ -130,11 +161,11 @@ Android app  ──┼────►│      └── dynamically imports NSE 
 
 **NEON visual language:** dark grid (`#05060a`) + neon-lime accent (`#b4ff00`), scanline overlay, ticker strip, cascadia-mono / jetbrains-mono monospace. Same palette is mirrored in the desktop + Android apps.
 
-## Desktop app (module #4)
+## Desktop app — `windows/`
 
 **Stack:** WinUI 3 + .NET 8 (`net8.0-windows10.0.19041.0`), Windows App SDK 2.0-preview2, CommunityToolkit.Mvvm source generators, LiveChartsCore.SkiaSharpView.WinUI 2.0-rc6, SkiaSharp.Views.WinUI 3.119, bundled JetBrains Mono TTF. Platforms: x86 / x64 / arm64.
 
-**Project:** `desktop-app/NEON.Trader.Desktop.sln`. Unpackaged (`WindowsPackageType=None`), runs as a plain `.exe`.
+**Project:** `windows/NEON.Trader.Desktop.sln`. Unpackaged (`WindowsPackageType=None`), runs as a plain `.exe`.
 
 **Architecture:**
 - `Services/ApiClient.cs` — typed `HttpClient`, self-signed cert bypass (for self-hosted backend), `X-API-Key` header, every endpoint the backend exposes.
@@ -152,7 +183,7 @@ Android app  ──┼────►│      └── dynamically imports NSE 
 - Backend timestamps are tz-naive server-local (IST) — **parsed with `DateTimeStyles.None`** everywhere (ChartsPage, Backtester, Trade.FormattedTime) so no phantom UTC↔IST shift.
 - Portfolio page drives `/api/order` for manual BUY / SELL — qty empty → Kelly, price empty → live quote, per-position row has inline SELL-qty + SELL + SELL ALL.
 
-## Android app (module #5)
+## Android app — `android/`
 
 **Stack:** Kotlin, Jetpack Compose, Retrofit2, Room (local cache), Navigation3, biometric auth.
 
@@ -166,17 +197,20 @@ Android app  ──┼────►│      └── dynamically imports NSE 
 
 **Screens (bottom nav):** Dashboard, **Portfolio** (manual BUY / SELL), Scanner, Charts, Agent chat, Logs, Settings.
 
-**Release signing:** keystore `.secrets/aitrader-release.jks`, alias `aitrader`, passwords from `.secrets/keystore.env`, build with `./gradlew assembleRelease -PRELEASE_STORE_FILE=… -PRELEASE_STORE_PASSWORD=… -PRELEASE_KEY_ALIAS=… -PRELEASE_KEY_PASSWORD=…` — produces v2-signed APK.
+**Centralized config (`gradle.properties`):** `apiHost`, `apiPort`, `apiScheme`, `wsScheme`, `apiKey`. Defaults at build time become `BuildConfig.DEFAULT_BASE_URL` / `DEFAULT_WS_URL` / `DEFAULT_API_KEY`. Override per-build via `-PapiHost=…`.
+
+**Release signing:** keystore + passwords kept locally (and in CI as GH Actions secrets `RELEASE_KEYSTORE_BASE64`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`). Build with `./gradlew assembleRelease -PRELEASE_STORE_FILE=… -PRELEASE_STORE_PASSWORD=… -PRELEASE_KEY_ALIAS=… -PRELEASE_KEY_PASSWORD=…` — produces v2-signed APK.
 
 **Key fact:** configurable base URL — same APK talks to NSE backend or Forex backend.
 
 ## Shared infrastructure between agents
 
-Both agents share: `data_fetcher`, `backtester`, `paper_trader`, `learner`, `market_calendar` (IST/ET/UTC logic). Changes here affect both markets — verify with backtests in both.
+Both agents share the same module surface: `data_fetcher`, `backtester`, `paper_trader`, `learner`, `market_calendar` (IST/ET/UTC logic). Changes to those modules in `nse-agent/` or `forex-agent/` affect that market only — verify with backtests in both before mirroring.
 
 ## When editing
 
 - When user says "the agent" without context, **ask NSE or Forex**.
+- Changes inside a submodule are committed in that submodule and bumped in the super (`git add <path> && git commit`).
 - Changing NSE agent code → redeploy NSE backend service too (it imports agent modules).
 - Changing Android API contracts → keep both backends in sync.
 - Capital assumptions for the primary user are small (~Rs.1000). Don't suggest strategies that require large capital.
