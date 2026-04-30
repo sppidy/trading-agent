@@ -1,6 +1,6 @@
 # trading-agent
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![CI](https://github.com/sppidy/trading-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/sppidy/trading-agent/actions/workflows/ci.yml)
 
 Open-source paper-trading platform spanning **Indian equities (NSE)** and **Forex**, with a shared HTTP + WebSocket contract powering web, desktop, and Android clients.
@@ -110,4 +110,4 @@ Don't open public issues for security problems. See [`SECURITY.md`](SECURITY.md)
 
 ## License
 
-[MIT](LICENSE) — see file for the full text and the no-financial-advice disclaimer.
+[Apache-2.0](LICENSE) — use, modify, fork, or sell freely; just keep the copyright notice + [`NOTICE`](NOTICE), and (per Apache §4b) flag changed files. Includes an explicit patent grant. No financial advice; trading involves risk.
