@@ -1,0 +1,43 @@
+name: Desktop Build (WinUI 3)
+
+on:
+  push:
+    paths:
+      - 'windows/**'
+      - '.github/workflows/desktop-build.yml'
+  pull_request:
+    paths:
+      - 'windows/**'
+      - '.github/workflows/desktop-build.yml'
+  workflow_dispatch:
+
+# NOTE: requires SUBMODULE_PAT to pull the private windows submodule.
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: windows
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_PAT || secrets.GITHUB_TOKEN }}
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+      - name: Restore
+        run: msbuild NEON.Trader.Desktop.sln -t:Restore -p:Configuration=Release -p:Platform=x64
+      - name: Build
+        run: msbuild NEON.Trader.Desktop.sln -p:Configuration=Release -p:Platform=x64
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEON.Trader.Desktop-${{ github.sha }}
+          path: windows/NEON.Trader.Desktop/bin/x64/Release/**/*
+          if-no-files-found: warn
+          retention-days: 30
