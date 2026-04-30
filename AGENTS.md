@@ -222,5 +222,5 @@ Both agents share the same module surface: `data_fetcher`, `backtester`, `paper_
 - **yfinance** — fallback for index data (Groww doesn't serve INDEX segment) and supplementary Yahoo news + options-chain PCR in `news_sentiment.py`.
 - **pandas_market_calendars (XNSE)** — deterministic trading-day/holiday lookup in `market_calendar.py`. No API call.
 - **LLM cascade** (see `ai_strategy.py` in each agent + chat path in each backend): Copilot/Haiku → **Ollama (`nemotron-3-nano:4b`, self-hosted, set `OLLAMA_BASE_URL`)** → OpenRouter → Groq → Cloudflare → Gemini. Ollama is chat-only (skipped on `want_json=True` — CPU inference is too slow for batch scans). Override with env vars `OLLAMA_BASE_URL` / `OLLAMA_MODEL`.
-- **Kaggle API** — Remote model training (NSE CatBoost retraining).
+- **Model training** — on-server cron, not Kaggle. NSE CatBoost retraining runs locally on the deploy host via `python main.py train` (calls `predictor.train_model()`); cron schedule lives in `crontab -l` on the server. Walk-forward + promotion gates keep a bad retrain from replacing the live model.
 - **Brokers** (expected integrations, not fully wired yet): Groww (read-only live data + MCP), HDFC Sky for NSE; TBD for Forex.
