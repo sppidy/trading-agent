@@ -14,7 +14,7 @@ Get a paper-trading stack running in ~5 minutes. This guide covers the **NSE pat
 | **NSE agent + backend** | Python 3.11+ |
 | **Forex backend** | Docker + Docker Compose (or local PostgreSQL 14+ if you don't want Docker) |
 | **Web dashboard** | Just a browser — no build step |
-| **Android client** | JDK 17 + Android SDK (or use the prebuilt APK from [the v0.1.0 release](https://github.com/sppidy/trading-agent/releases/tag/v0.1.0)) |
+| **Android client** | JDK 17 + Android SDK (or use the prebuilt APK from [the v0.1.0 release](https://github.com/sppidy/janus/releases/tag/v0.1.0)) |
 | **Desktop client** | .NET 8 SDK + Windows 10 19041+ (or use the prebuilt zip from the release) |
 
 You only need the prerequisites for the components you actually run.
@@ -24,8 +24,8 @@ You only need the prerequisites for the components you actually run.
 ## 1. Clone with submodules
 
 ```bash
-git clone --recurse-submodules https://github.com/sppidy/trading-agent.git
-cd trading-agent
+git clone --recurse-submodules https://github.com/sppidy/janus.git
+cd janus
 ```
 
 If you forgot `--recurse-submodules`:
@@ -154,13 +154,13 @@ You have three options for connecting to your running backend(s):
 Already served by `nse-backend` at `http://localhost:8443/dashboard`. Settings tab → paste base URL + API key.
 
 ### Desktop (Windows)
-Download `NEON.Trader.Desktop-v0.1.0-x64.zip` from the [v0.1.0 release](https://github.com/sppidy/trading-agent/releases/tag/v0.1.0), unzip, run `NEON.Trader.exe`.
+Download `Janus.Desktop-v0.1.0-x64.zip` from the [v0.1.0 release](https://github.com/sppidy/janus/releases/tag/v0.1.0), unzip, run `Janus.Desktop.exe`.
 
 To build from source:
 ```bash
 cd windows
-msbuild NEON.Trader.Desktop.sln -p:Configuration=Debug -p:Platform=x64
-# .\NEON.Trader.Desktop\bin\x64\Debug\net8.0-windows10.0.19041.0\NEON.Trader.exe
+msbuild Janus.Desktop.sln -p:Configuration=Debug -p:Platform=x64
+# .\Janus.Desktop\bin\x64\Debug\net8.0-windows10.0.19041.0\Janus.Desktop.exe
 ```
 
 If your backend uses a self-signed cert (typical for self-hosted), pin the thumbprint:
@@ -174,7 +174,7 @@ setx TRADER_BACKEND_CERT_THUMBPRINT "<the thumbprint>"
 ```
 
 ### Android
-Side-load `AITrader-v0.1.0-release.apk` from the release, or build:
+Side-load `Janus-v0.1.0-release.apk` from the release, or build:
 ```bash
 cd android
 ./gradlew assembleDebug

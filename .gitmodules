@@ -1,21 +1,21 @@
 [submodule "nse-agent"]
 	path = nse-agent
-	url = git@github.com:sppidy/nse-agent.git
+	url = git@github.com:sppidy/janus-nse-agent.git
 [submodule "nse-backend"]
 	path = nse-backend
-	url = git@github.com:sppidy/nse-backend.git
+	url = git@github.com:sppidy/janus-nse-backend.git
 [submodule "android"]
 	path = android
-	url = git@github.com:sppidy/aitrader-android.git
+	url = git@github.com:sppidy/janus-android.git
 [submodule "windows"]
 	path = windows
-	url = git@github.com:sppidy/aitrader-desktop.git
+	url = git@github.com:sppidy/janus-desktop.git
 [submodule "web"]
 	path = web
-	url = git@github.com:sppidy/aitrader-web.git
+	url = git@github.com:sppidy/janus-web.git
 [submodule "forex-agent"]
 	path = forex-agent
-	url = git@github.com:sppidy/forex-agent.git
+	url = git@github.com:sppidy/janus-forex-agent.git
 [submodule "forex-backend"]
 	path = forex-backend
-	url = git@github.com:sppidy/forex-backend.git
+	url = git@github.com:sppidy/janus-forex-backend.git

@@ -4,24 +4,24 @@ Orientation for AI agents working in this ecosystem. This file documents the ful
 
 ## Layout
 
-`trading-agent/` is a meta-repo. Each subfolder is a git submodule pointing to its own private repo. There is no other top-level project — everything lives here.
+`janus/` is a meta-repo. Each subfolder is a git submodule pointing to its own private repo. There is no other top-level project — everything lives here.
 
 | # | Module | Path | Repo | Stack | Deploy |
 |---|--------|------|------|-------|--------|
-| 1 | NSE agent      | `nse-agent/`      | [`sppidy/nse-agent`](https://github.com/sppidy/nse-agent)             | Python, CatBoost, ML | `git pull` on server |
-| 2 | NSE backend    | `nse-backend/`    | [`sppidy/nse-backend`](https://github.com/sppidy/nse-backend)         | FastAPI, uvicorn      | `scp` to `~/backend/` |
-| 3 | Web dashboard  | `web/`            | [`sppidy/aitrader-web`](https://github.com/sppidy/aitrader-web)       | Vanilla JS, no build  | `scp` to `~/frontend/` (served by NSE backend) |
-| 4 | Desktop app    | `windows/`        | [`sppidy/aitrader-desktop`](https://github.com/sppidy/aitrader-desktop) | WinUI 3 / .NET 8     | local build |
-| 5 | Android app    | `android/`        | [`sppidy/aitrader-android`](https://github.com/sppidy/aitrader-android) | Kotlin / Jetpack Compose | APK build (CI-signed), side-load |
-| 6 | Forex agent    | `forex-agent/`    | [`sppidy/forex-agent`](https://github.com/sppidy/forex-agent)         | Python                | `scp` (whole dir) |
-| 7 | Forex backend  | `forex-backend/`  | [`sppidy/forex-backend`](https://github.com/sppidy/forex-backend)     | FastAPI + PostgreSQL + Docker | `scp` (whole dir) |
+| 1 | NSE agent      | `nse-agent/`      | [`sppidy/janus-nse-agent`](https://github.com/sppidy/janus-nse-agent)             | Python, CatBoost, ML | `git pull` on server |
+| 2 | NSE backend    | `nse-backend/`    | [`sppidy/janus-nse-backend`](https://github.com/sppidy/janus-nse-backend)         | FastAPI, uvicorn      | `scp` to `~/backend/` |
+| 3 | Web dashboard  | `web/`            | [`sppidy/janus-web`](https://github.com/sppidy/janus-web)       | Vanilla JS, no build  | `scp` to `~/frontend/` (served by NSE backend) |
+| 4 | Desktop app    | `windows/`        | [`sppidy/janus-desktop`](https://github.com/sppidy/janus-desktop) | WinUI 3 / .NET 8     | local build |
+| 5 | Android app    | `android/`        | [`sppidy/janus-android`](https://github.com/sppidy/janus-android) | Kotlin / Jetpack Compose | APK build (CI-signed), side-load |
+| 6 | Forex agent    | `forex-agent/`    | [`sppidy/janus-forex-agent`](https://github.com/sppidy/janus-forex-agent)         | Python                | `scp` (whole dir) |
+| 7 | Forex backend  | `forex-backend/`  | [`sppidy/janus-forex-backend`](https://github.com/sppidy/janus-forex-backend)     | FastAPI + PostgreSQL + Docker | `scp` (whole dir) |
 
 Server: `ubuntu@${BACKEND_HOST}`. All NSE-side services are private-network-only.
 
 ## Cloning
 
 ```bash
-git clone --recurse-submodules git@github.com:sppidy/trading-agent.git
+git clone --recurse-submodules git@github.com:sppidy/janus.git
 # or, after a plain clone:
 git submodule update --init --recursive
 ```
@@ -52,9 +52,9 @@ Located under [`docs/`](docs):
 ## Deployment rules — read before deploying
 
 - **NSE agent (`nse-agent/`):** `git pull` only. Never `scp` the full repo — it clobbers live state files (`portfolio.json`, `*.db`, `trade_journal.json`) on the server. A past incident wiped live portfolio data this way.
-- **NSE backend (`nse-backend/`):** `scp` specific files into `~/backend/` (preserve server-only files like `certs/` and `.backup`). Runs under **systemd** as `ai-trader-api.service` and `ai-trading-agent.service`. Restart with `sudo systemctl restart ai-trader-api.service ai-trading-agent.service`.
+- **NSE backend (`nse-backend/`):** `scp` specific files into `~/backend/` (preserve server-only files like `certs/` and `.backup`). Runs under **systemd** as `janus-nse-api.service` and `janus-nse-agent.service`. Restart with `sudo systemctl restart ai-trader-api.service janus-nse-agent.service`.
 - **Web dashboard (`web/`):** `scp` the four files (`index.html`, `styles.css`, `app.js`, `lightweight-charts.js`) into `~/frontend/`. The backend serves them statically from `/dashboard`; no service restart needed for HTML/CSS/JS updates.
-- **Desktop app (`windows/`):** built locally via `dotnet build -p:Platform=arm64 -c Debug` (or via the `desktop-build.yml` workflow for x64 Release). Runs from `windows/NEON.Trader.Desktop/bin/<arch>/<config>/net8.0-windows10.0.19041.0/NEON.Trader.exe`. Uses Windows App SDK 2.0-preview2 + LiveCharts2 + bundled JetBrains Mono.
+- **Desktop app (`windows/`):** built locally via `dotnet build -p:Platform=arm64 -c Debug` (or via the `desktop-build.yml` workflow for x64 Release). Runs from `windows/Janus.Desktop/bin/<arch>/<config>/net8.0-windows10.0.19041.0/Janus.Desktop.exe`. Uses Windows App SDK 2.0-preview2 + LiveCharts2 + bundled JetBrains Mono.
 - **Android app (`android/`):** `./gradlew assembleRelease` with keystore creds produces a v2-signed APK. CI handles this on push via `android-build.yml`. Locally, keystore + passwords come from a `.secrets/` directory you keep outside the repo.
 - **Forex agent + backend (`forex-agent/`, `forex-backend/`):** `scp` both directories. Runs under **Docker** (not systemd) — restart with `docker compose restart` or equivalent. Safe to scp because forex state lives in PostgreSQL, not files.
 
@@ -108,9 +108,9 @@ Android app  ──┼────►│      └── dynamically imports NSE 
 - CORS-configurable via `TRUSTED_ORIGINS`.
 - Per-endpoint rate limiting (distinct buckets: `scan:start`, `scan:status`, `trade`, `chat:start`, `chat:status`).
 - Thread-safe portfolio mutex (`_PORTFOLIO_LOCK`) — serialises `/api/trade`, `/api/ai-signals/apply`, and `/api/order` against each other and against the autopilot.
-- **LogBroadcaster** does double duty: it hooks the in-process Python `logger` **and** tails `logs/trading_agent.log` on disk, so the separate `ai-trading-agent.service` (autopilot) process — which only writes to the file — also streams through the WebSocket. Starts from EOF so new clients don't get a history dump.
+- **LogBroadcaster** does double duty: it hooks the in-process Python `logger` **and** tails `logs/janus.log` on disk, so the separate `janus-nse-agent.service` (autopilot) process — which only writes to the file — also streams through the WebSocket. Starts from EOF so new clients don't get a history dump.
 - `TIMEFRAME_TO_YF` lookup is case-insensitive: `5m`, `15m`, `1h`, `1d`, `1w`, `1mo`, `1y` all resolve.
-- Autopilot control wraps the systemd `ai-trading-agent.service`.
+- Autopilot control wraps the systemd `janus-nse-agent.service`.
 - Static-files mount at `/dashboard` serves the web frontend (`../web/`).
 
 **Endpoints (all prefixed `/api/`):**
@@ -174,15 +174,15 @@ Android app  ──┼────►│      └── dynamically imports NSE 
 
 **Stack:** WinUI 3 + .NET 8 (`net8.0-windows10.0.19041.0`), Windows App SDK 2.0-preview2, CommunityToolkit.Mvvm source generators, LiveChartsCore.SkiaSharpView.WinUI 2.0-rc6, SkiaSharp.Views.WinUI 3.119, bundled JetBrains Mono TTF. Platforms: x86 / x64 / arm64.
 
-**Project:** `windows/NEON.Trader.Desktop.sln`. Unpackaged (`WindowsPackageType=None`), runs as a plain `.exe`.
+**Project:** `windows/Janus.Desktop.sln`. Unpackaged (`WindowsPackageType=None`), runs as a plain `.exe`.
 
 **Architecture:**
 - `Services/ApiClient.cs` — typed `HttpClient`, TLS validation via `TlsTrust` (CA-valid → trust, else thumbprint pin via `TRADER_BACKEND_CERT_THUMBPRINT`, else `TRADER_ALLOW_INSECURE_TLS=1` opt-out). `X-API-Key` header on every request. WS auth uses the header (no token in URL).
 - `Services/TlsTrust.cs` — central TLS-trust policy. Replaced the old "always trust" callback that allowed silent MITM on the same network.
-- `Services/SettingsService.cs` — multi-profile JSON persistence under `%LocalAppData%\NEON.Trader\settings.json`.
+- `Services/SettingsService.cs` — multi-profile JSON persistence under `%LocalAppData%\Janus\settings.json`.
 - `Services/Indicators.cs` + `Services/Backtester.cs` — pure-C# SMA/EMA/RSI/Bollinger/ATR + an intrabar SL/TP backtest engine, **byte-for-byte matching the web JS implementation**, so results agree.
 - `Models/BackendProfile.cs` — NSE main / NSE eval / Forex profiles with per-profile URL + API key.
-- `App.xaml.cs` — global crash logger to `%LocalAppData%\NEON.Trader\crash.log` (hooks `Application.UnhandledException`, `AppDomain.UnhandledException`, `TaskScheduler.UnobservedTaskException`).
+- `App.xaml.cs` — global crash logger to `%LocalAppData%\Janus\crash.log` (hooks `Application.UnhandledException`, `AppDomain.UnhandledException`, `TaskScheduler.UnobservedTaskException`).
 
 **Views (under `Views/`):** Dashboard, Watchlist, Portfolio, Charts, Strategy, Scanner, Agent, Logs, Settings.
 

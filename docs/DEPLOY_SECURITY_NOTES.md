@@ -34,9 +34,9 @@ sudo visudo -f /etc/sudoers.d/ai-trader-api
 Add:
 
 ```text
-ubuntu ALL=(root) NOPASSWD: /usr/bin/systemctl start ai-trading-agent.service
-ubuntu ALL=(root) NOPASSWD: /usr/bin/systemctl stop ai-trading-agent.service
-ubuntu ALL=(root) NOPASSWD: /usr/bin/systemctl show ai-trading-agent.service --property=ActiveState,SubState,MainPID,ExecMainStartTimestamp
+ubuntu ALL=(root) NOPASSWD: /usr/bin/systemctl start janus-nse-agent.service
+ubuntu ALL=(root) NOPASSWD: /usr/bin/systemctl stop janus-nse-agent.service
+ubuntu ALL=(root) NOPASSWD: /usr/bin/systemctl show janus-nse-agent.service --property=ActiveState,SubState,MainPID,ExecMainStartTimestamp
 ```
 
 Do not grant wildcard sudo access.

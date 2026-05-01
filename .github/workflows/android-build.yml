@@ -74,7 +74,7 @@ jobs:
       - name: Upload debug APK
         uses: actions/upload-artifact@v7
         with:
-          name: app-debug-${{ github.sha }}
+          name: janus-debug-${{ github.sha }}
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 30
@@ -93,7 +93,7 @@ jobs:
         if: ${{ env.RELEASE_STORE_FILE != '' }}
         uses: actions/upload-artifact@v7
         with:
-          name: app-release-${{ github.sha }}
+          name: janus-release-${{ github.sha }}
           path: android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 90

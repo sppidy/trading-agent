@@ -4,7 +4,7 @@
 
 **Do not open a public GitHub issue for security problems.**
 
-Use GitHub's [private vulnerability reporting](https://github.com/sppidy/trading-agent/security/advisories/new) on the affected repo, or email the maintainer directly. Include:
+Use GitHub's [private vulnerability reporting](https://github.com/sppidy/janus/security/advisories/new) on the affected repo, or email the maintainer directly. Include:
 
 - A clear description of the issue
 - Steps to reproduce (proof-of-concept welcome)
@@ -15,7 +15,7 @@ You'll get an acknowledgement within 5 business days.
 
 ## Scope
 
-This policy covers the seven submodules of [`trading-agent`](https://github.com/sppidy/trading-agent):
+This policy covers the seven submodules of [`janus`](https://github.com/sppidy/janus):
 
 `nse-agent`, `nse-backend`, `aitrader-android`, `aitrader-desktop`, `aitrader-web`, `forex-agent`, `forex-backend`.
 

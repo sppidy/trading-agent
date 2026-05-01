@@ -1,7 +1,7 @@
-# trading-agent
+# Janus
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![CI](https://github.com/sppidy/trading-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/sppidy/trading-agent/actions/workflows/ci.yml)
+[![CI](https://github.com/sppidy/janus/actions/workflows/ci.yml/badge.svg)](https://github.com/sppidy/janus/actions/workflows/ci.yml)
 
 Open-source paper-trading platform spanning **Indian equities (NSE)** and **Forex**, with a shared HTTP + WebSocket contract powering web, desktop, and Android clients.
 
@@ -13,13 +13,13 @@ This is a **meta-repo**: every component is its own git submodule with its own l
 
 | Path | Repo | Stack | Role |
 | --- | --- | --- | --- |
-| [`nse-agent/`](https://github.com/sppidy/nse-agent) | sppidy/nse-agent | Python, CatBoost | NSE trading agent (rule-based + LLM + ML) |
-| [`nse-backend/`](https://github.com/sppidy/nse-backend) | sppidy/nse-backend | FastAPI, uvicorn | Single-user backend wrapping `nse-agent` |
-| [`web/`](https://github.com/sppidy/aitrader-web) | sppidy/aitrader-web | Vanilla JS | Dashboard served by `nse-backend` at `/dashboard` |
-| [`windows/`](https://github.com/sppidy/aitrader-desktop) | sppidy/aitrader-desktop | WinUI 3 / .NET 8 | Desktop client |
-| [`android/`](https://github.com/sppidy/aitrader-android) | sppidy/aitrader-android | Kotlin / Jetpack Compose | Mobile client |
-| [`forex-agent/`](https://github.com/sppidy/forex-agent) | sppidy/forex-agent | Python | Forex agent (ICT-style strategies) |
-| [`forex-backend/`](https://github.com/sppidy/forex-backend) | sppidy/forex-backend | FastAPI + PostgreSQL + Docker | Multi-user forex backend |
+| [`nse-agent/`](https://github.com/sppidy/janus-nse-agent) | sppidy/janus-nse-agent | Python, CatBoost | NSE trading agent (rule-based + LLM + ML) |
+| [`nse-backend/`](https://github.com/sppidy/janus-nse-backend) | sppidy/janus-nse-backend | FastAPI, uvicorn | Single-user backend wrapping `nse-agent` |
+| [`web/`](https://github.com/sppidy/janus-web) | sppidy/janus-web | Vanilla JS | Dashboard served by `nse-backend` at `/dashboard` |
+| [`windows/`](https://github.com/sppidy/janus-desktop) | sppidy/janus-desktop | WinUI 3 / .NET 8 | Desktop client |
+| [`android/`](https://github.com/sppidy/janus-android) | sppidy/janus-android | Kotlin / Jetpack Compose | Mobile client |
+| [`forex-agent/`](https://github.com/sppidy/janus-forex-agent) | sppidy/janus-forex-agent | Python | Forex agent (ICT-style strategies) |
+| [`forex-backend/`](https://github.com/sppidy/janus-forex-backend) | sppidy/janus-forex-backend | FastAPI + PostgreSQL + Docker | Multi-user forex backend |
 
 ## Architecture
 
@@ -39,8 +39,8 @@ Full architectural reference: [`AGENTS.md`](AGENTS.md).
 ## Getting started
 
 ```bash
-git clone --recurse-submodules https://github.com/sppidy/trading-agent.git
-cd trading-agent
+git clone --recurse-submodules https://github.com/sppidy/janus.git
+cd janus
 ```
 
 Full setup is in [`QUICKSTART.md`](QUICKSTART.md) — one-page guide covering the NSE path, the Forex path, client builds, and the production hardening checklist.
