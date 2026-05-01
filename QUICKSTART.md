@@ -100,38 +100,23 @@ Try `python main.py help` for all CLI commands (`scan`, `ai-scan`, `backtest`, `
 
 ---
 
-## 3. Forex path (multi-user, PostgreSQL, Docker)
+## 3. Forex path (multi-user, PostgreSQL, Docker Compose)
 
-The forex backend is designed for multi-user deployments and ships as a Docker stack.
-
-```bash
-cd forex-backend
-cp .env.example .env
-```
-
-Edit `.env`:
-
-```dotenv
-# forex-backend/.env
-TRUSTED_ORIGINS=http://localhost:8445
-DATABASE_URL=postgresql://forex:CHANGE_ME@postgres:5432/forex_trading
-ADMIN_API_KEY=                 # leave empty to auto-generate on first boot
-ADMIN_KEY_FILE=/run/forex/admin.key
-GROQ_API_KEY=…                 # at least one LLM key (same as NSE side)
-```
-
-Bring it up:
+The forex backend is designed for multi-user deployments and ships as a Docker stack with PostgreSQL + the API + an autopilot worker.
 
 ```bash
-docker compose up -d
-docker compose logs forex-api | grep "Admin user created"
-# → "[USERS] Admin user created. API key written to /run/forex/admin.key (mode 0600)."
+# from the super (janus/) root:
+cp .env.docker.example .env.docker
+chmod 600 .env.docker
+$EDITOR .env.docker          # set POSTGRES_PASSWORD and at least one LLM key
 
-# Pull the admin key out of the container:
+docker compose --env-file .env.docker up -d
+
+# wait for the admin to be created on first boot, then pull the key:
 docker compose exec forex-api cat /run/forex/admin.key
 ```
 
-Now make a regular user (call from another shell):
+Now make a regular user from another shell:
 
 ```bash
 ADMIN_KEY=$(docker compose exec forex-api cat /run/forex/admin.key)
@@ -143,6 +128,24 @@ curl -X POST http://localhost:8445/api/admin/users \
 ```
 
 That `fx-…` key is what Alice puts into a desktop / Android / web client.
+
+## 3a. Server install — both stacks via `install.sh`
+
+`./install.sh` from the super root automates the full server bring-up. Run as root.
+
+```bash
+sudo ./install.sh                # NSE only (systemd units + venvs + EnvironmentFile)
+sudo ./install.sh --with-forex   # NSE systemd + Forex Docker Compose
+sudo ./install.sh --forex-only   # Forex Docker only (no systemd)
+```
+
+The script:
+- Creates per-component venvs at `<repo>/nse-{agent,backend}/venv`.
+- Seeds `/etc/janus/nse.env` (mode 0600, owner `root:ubuntu`) on first run; never overwrites it.
+- Installs systemd units `janus-nse-api.service` + `janus-nse-agent.service` with hardening (`NoNewPrivileges`, `ProtectSystem=strict`, `ReadWritePaths` scoped to the repo).
+- For forex: builds + brings up the Compose stack via the `.env.docker` you've filled in.
+
+Edit `/etc/janus/nse.env` to set `API_AUTH_TOKEN` and your LLM key(s), then `sudo systemctl start janus-nse-api janus-nse-agent`.
 
 ---
 
