@@ -84,7 +84,7 @@ Android app  ──┼────►│      └── dynamically imports NSE 
 - `chat` — interactive terminal assistant
 
 **Key modules:**
-- `predictor.py` — CatBoost model (~45 features: RSI, EMA, MACD, Bollinger, ATR, Stochastic, ADX, volatility, volume, S/R). Predicts ≥2% upside within 5 trading days. Model files in `models/` with SHA-256 integrity.
+- `predictor.py` — CatBoost model (~45 features: RSI, EMA, MACD, Bollinger, ATR, Stochastic, ADX, volatility, volume, S/R). Predicts ≥2% upside within 5 trading days. Models in `models/` carry **two integrity sidecars**: `.sha256` (corruption check) plus, when `MODEL_HMAC_SECRET` env is set, a `.hmac` (HMAC-SHA256, tamper-resistant — required to load when the secret is configured).
 - `ai_strategy.py` — Gemini-powered signals, strict BUY/SELL/HOLD + confidence schema. News-sentiment fetch has a **45 s** timeout (bumped from 15 s) because the LLM sentiment pass is load-sensitive and used to drop to NEUTRAL too often.
 - `paper_trader.py` — Portfolio mgmt, SL/TP, atomic journal writes.
 - `autopilot.py` — Market-hours loop.
@@ -119,7 +119,10 @@ Android app  ──┼────►│      └── dynamically imports NSE 
 - Trade: `trade` (rule-based cycle), `ai-signals/apply` (apply pre-computed signals), **`order`** (manual BUY/SELL from client UIs — required for desktop + Android Portfolio pages).
 - Autopilot: `autopilot/start`, `autopilot/stop`.
 - Chat: `chat`, `chat/status/{job_id}`.
-- Plus WebSocket: **`/ws/logs`** (token via `X-API-Key` header or `?token=` query).
+- Plus WebSocket: **`/ws/logs`**. Auth precedence:
+  1. `X-API-Key` request header (preferred for native clients).
+  2. First message after accept — JSON `{"type":"auth","key":"..."}` (used by browsers, which can't set custom WS headers).
+  3. `?token=` query string — **deprecated**, kept for back-compat. Tokens in URLs leak via reverse-proxy logs and tracing; will be removed in a future release.
 
 ## Forex agent — `forex-agent/`
 
@@ -149,6 +152,12 @@ Android app  ──┼────►│      └── dynamically imports NSE 
 
 **Extra endpoints vs NSE backend:** `/api/admin/users`, `/api/strategies`, `/api/market-regime`, `/api/candles`.
 
+**Security (set before exposing to anything beyond localhost):**
+- `TRUSTED_ORIGINS` — comma-separated allowed CORS origins (defaults to localhost only). Wildcard is no longer accepted; any browser the user is logged into could otherwise call this API with their key.
+- `ADMIN_API_KEY` — if set, used as the bootstrapped admin key on first start. Otherwise a random 32-hex key is generated.
+- `ADMIN_KEY_FILE` — path where the auto-generated admin key is written, mode 0600 (default `/run/forex/admin.key`, falls back to `./admin.key`). The key is **never logged to stdout**.
+- WebSocket auth: same three-path precedence as nse-backend (`X-API-Key` header / first-message JSON / deprecated `?key=` query).
+
 ## Web dashboard — `web/`
 
 **Stack:** vanilla JS (no build), HTML + CSS, TradingView `lightweight-charts` vendored locally, JetBrains Mono from Google Fonts.
@@ -168,7 +177,8 @@ Android app  ──┼────►│      └── dynamically imports NSE 
 **Project:** `windows/NEON.Trader.Desktop.sln`. Unpackaged (`WindowsPackageType=None`), runs as a plain `.exe`.
 
 **Architecture:**
-- `Services/ApiClient.cs` — typed `HttpClient`, self-signed cert bypass (for self-hosted backend), `X-API-Key` header, every endpoint the backend exposes.
+- `Services/ApiClient.cs` — typed `HttpClient`, TLS validation via `TlsTrust` (CA-valid → trust, else thumbprint pin via `TRADER_BACKEND_CERT_THUMBPRINT`, else `TRADER_ALLOW_INSECURE_TLS=1` opt-out). `X-API-Key` header on every request. WS auth uses the header (no token in URL).
+- `Services/TlsTrust.cs` — central TLS-trust policy. Replaced the old "always trust" callback that allowed silent MITM on the same network.
 - `Services/SettingsService.cs` — multi-profile JSON persistence under `%LocalAppData%\NEON.Trader\settings.json`.
 - `Services/Indicators.cs` + `Services/Backtester.cs` — pure-C# SMA/EMA/RSI/Bollinger/ATR + an intrabar SL/TP backtest engine, **byte-for-byte matching the web JS implementation**, so results agree.
 - `Models/BackendProfile.cs` — NSE main / NSE eval / Forex profiles with per-profile URL + API key.
@@ -202,6 +212,28 @@ Android app  ──┼────►│      └── dynamically imports NSE 
 **Release signing:** keystore + passwords kept locally (and in CI as GH Actions secrets `RELEASE_KEYSTORE_BASE64`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`). Build with `./gradlew assembleRelease -PRELEASE_STORE_FILE=… -PRELEASE_STORE_PASSWORD=… -PRELEASE_KEY_ALIAS=… -PRELEASE_KEY_PASSWORD=…` — produces v2-signed APK.
 
 **Key fact:** configurable base URL — same APK talks to NSE backend or Forex backend.
+
+## Security knobs (consolidated)
+
+A grep-friendly index of every env var that affects security. Defaults are dev-friendly; production deployments should set every applicable one.
+
+| Where | Env var | Purpose |
+| --- | --- | --- |
+| `nse-backend` | `API_AUTH_TOKEN` | The single API key clients must send as `X-API-Key`. **Required**; default `change-me` is rejected at startup unless `ALLOW_INSECURE_API_TOKEN=1`. |
+| `nse-backend` | `TRUSTED_ORIGINS` | Comma-separated list of allowed CORS origins. |
+| `nse-backend` | `ALLOW_INSECURE_API_TOKEN` | `=1` to permit `change-me` token (local dev only). |
+| `nse-backend` | `AUTOPILOT_SERVICE` | systemd unit name; whitelisted to a fixed start/stop/show action set. |
+| `forex-backend` | `TRUSTED_ORIGINS` | CORS allow-list (defaults to localhost only — used to be `["*"]`). |
+| `forex-backend` | `ADMIN_API_KEY` | Bootstraps admin row with this key on first start; otherwise random 32-hex. |
+| `forex-backend` | `ADMIN_KEY_FILE` | Path where the auto-generated admin key is written (mode 0600). Default `/run/forex/admin.key`. |
+| `forex-backend` | `DATABASE_URL` | Postgres URL. SQLite (`sqlite:///...`) also works for local dev — pool kwargs auto-skipped. |
+| `nse-agent`, `forex-agent` | `MODEL_HMAC_SECRET` | When set, pickle model loads require a matching `.hmac` sidecar (HMAC-SHA256). Tamper-resistant. Falls back to plain SHA-256 (corruption-only) if unset. |
+| `windows/` | `TRADER_BACKEND_CERT_THUMBPRINT` | Pin self-signed backend cert by SHA-1 thumbprint. The desktop app refuses other certs unless `TRADER_ALLOW_INSECURE_TLS=1`. |
+| `windows/` | `TRADER_ALLOW_INSECURE_TLS` | `=1` reverts to legacy "trust any cert" behaviour (only safe on a fully-controlled private network). |
+| `nse-agent` (and forex) | `GROWW_API_KEY`, `GROWW_TOTP_SECRET`, `GROWW_ACCESS_TOKEN` | Optional — Groww live data. Falls back to yfinance if unset. |
+| `nse-agent` (and forex) | `GROQ_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `CLOUDFLARE_API_TOKEN`, `OLLAMA_BASE_URL`, etc. | LLM cascade — at least one needed. |
+
+**WebSocket auth** (both backends): clients should send the API key as the `X-API-Key` header on the WS handshake. Browsers can't set custom WS headers, so they instead send a first JSON message `{"type":"auth","key":"..."}` immediately after `accept`. The legacy `?token=` / `?key=` query string is still accepted for back-compat but logs a deprecation warning — tokens in URLs leak through reverse-proxy access logs and tracing.
 
 ## Shared infrastructure between agents
 

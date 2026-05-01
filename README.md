@@ -38,52 +38,17 @@ Full architectural reference: [`AGENTS.md`](AGENTS.md).
 
 ## Getting started
 
-### Clone with submodules
-
 ```bash
 git clone --recurse-submodules https://github.com/sppidy/trading-agent.git
 cd trading-agent
-# or, if you already cloned without --recurse-submodules:
-git submodule update --init --recursive
 ```
 
-### Pull every submodule to its `main`
-
-```bash
-git submodule foreach 'git checkout main && git pull --ff-only'
-```
-
-### Run the NSE stack locally
-
-```bash
-# 1. NSE agent
-cd nse-agent
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env                       # add at least one LLM key
-
-# 2. NSE backend (in another shell)
-cd ../nse-backend
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env                       # set API_AUTH_TOKEN
-export AGENT_DIR=../nse-agent
-./start_server.sh
-```
-
-Then open `http://localhost:8443/dashboard` (or your configured port) for the web UI, or build the desktop / Android client and point it at your backend.
-
-### Run the Forex stack locally
-
-```bash
-cd forex-backend
-cp .env.example .env                       # set POSTGRES_PASSWORD + ADMIN_API_KEY
-docker compose up -d
-```
+Full setup is in [`QUICKSTART.md`](QUICKSTART.md) — one-page guide covering the NSE path, the Forex path, client builds, and the production hardening checklist.
 
 ## Documentation
 
-- [`AGENTS.md`](AGENTS.md) — full architectural reference (every submodule, every endpoint, every CI workflow)
+- [`QUICKSTART.md`](QUICKSTART.md) — get a stack running in ~5 minutes (NSE path + Forex path + production hardening checklist)
+- [`AGENTS.md`](AGENTS.md) — full architectural reference (every submodule, every endpoint, every CI workflow, every security knob)
 - [`docs/GROWW_SDK.md`](docs/GROWW_SDK.md) — Groww REST + MCP reference, rate limits
 - [`docs/HDFC_SKY_API.md`](docs/HDFC_SKY_API.md) — HDFC Sky API endpoint notes (offline mirror of the dev portal)
 - [`docs/DEPLOY_SECURITY_NOTES.md`](docs/DEPLOY_SECURITY_NOTES.md) — server hardening checklist for the FastAPI backends
